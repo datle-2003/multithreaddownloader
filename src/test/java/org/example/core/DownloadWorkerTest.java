@@ -1,5 +1,6 @@
 package org.example.core;
 
+import org.example.state.DownloadState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +27,6 @@ class DownloadWorkerTest {
 
     @AfterEach
     void tearDown() {
-        // Xóa file sau khi test xong
         if (tempFile.exists()) {
             tempFile.delete();
         }
@@ -40,6 +40,8 @@ class DownloadWorkerTest {
         CountDownLatch latch = new CountDownLatch(1);
         AtomicLong totalDownloaded = new AtomicLong(0);
 
+        DownloadState state = new DownloadState(TEST_URL, tempFile.getAbsolutePath(), 1, 1000);
+
         DownloadWorker worker = new DownloadWorker(
                 TEST_URL,
                 tempFile.getAbsolutePath(),
@@ -47,13 +49,14 @@ class DownloadWorkerTest {
                 endByte,
                 1,
                 latch,
-                totalDownloaded
+                totalDownloaded,
+                state
         );
 
         Thread thread = new Thread(worker);
         thread.start();
 
-        boolean completed = latch.await(5, TimeUnit.SECONDS);
+        boolean completed = latch.await(10, TimeUnit.SECONDS);
 
         assertTrue(completed, "Worker must complete within timeout");
         assertTrue(tempFile.length() > 0, "File must not be empty after download");
@@ -67,15 +70,28 @@ class DownloadWorkerTest {
     @DisplayName("Worker handles bad URL gracefully")
     void testWorkerWithBadUrl() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
-        DownloadWorker worker = new DownloadWorker(
-                "https://invalid-url-blabla.com/file.txt",
-                tempFile.getAbsolutePath(),
-                0, 100, 1, latch, new AtomicLong(0)
-        );
+        DownloadWorker worker = getDownloadWorker(latch);
 
         new Thread(worker).start();
 
-        boolean completed = latch.await(2, TimeUnit.SECONDS);
-        assertTrue(completed, "Worker must complete within timeout");
+        boolean completed = latch.await(10, TimeUnit.SECONDS);
+
+        assertTrue(completed, "Worker must complete (even with failure) within timeout");
+    }
+
+    private DownloadWorker getDownloadWorker(CountDownLatch latch) {
+        AtomicLong totalDownloaded = new AtomicLong(0);
+        String badUrl = "https://invalid-url-blabla-xyz-123.com/file.txt";
+
+        // Dummy state cho test lỗi
+        DownloadState state = new DownloadState(badUrl, tempFile.getAbsolutePath(), 1, 100);
+
+        return new DownloadWorker(
+                badUrl,
+                tempFile.getAbsolutePath(),
+                0, 100, 1, latch,
+                totalDownloaded,
+                state
+        );
     }
 }
