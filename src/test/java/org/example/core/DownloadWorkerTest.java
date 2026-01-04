@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -37,6 +38,7 @@ class DownloadWorkerTest {
         long startByte = 0;
         long endByte = 49;
         CountDownLatch latch = new CountDownLatch(1);
+        AtomicLong totalDownloaded = new AtomicLong(0);
 
         DownloadWorker worker = new DownloadWorker(
                 TEST_URL,
@@ -44,7 +46,8 @@ class DownloadWorkerTest {
                 startByte,
                 endByte,
                 1,
-                latch
+                latch,
+                totalDownloaded
         );
 
         Thread thread = new Thread(worker);
@@ -67,7 +70,7 @@ class DownloadWorkerTest {
         DownloadWorker worker = new DownloadWorker(
                 "https://invalid-url-blabla.com/file.txt",
                 tempFile.getAbsolutePath(),
-                0, 100, 1, latch
+                0, 100, 1, latch, new AtomicLong(0)
         );
 
         new Thread(worker).start();

@@ -8,7 +8,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
+import java.net.UnknownHostException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DownloadWorker implements Runnable {
 
@@ -18,14 +20,16 @@ public class DownloadWorker implements Runnable {
     private final long endByte;
     private final int workerId;
     private final CountDownLatch latch;
+    private AtomicLong totalDownloaded;
 
-    public DownloadWorker(String fileUrl, String destinationPath, long startByte, long endByte, int workerId, CountDownLatch latch) {
+    public DownloadWorker(String fileUrl, String destinationPath, long startByte, long endByte, int workerId, CountDownLatch latch, AtomicLong totalDownloaded) {
         this.fileUrl = fileUrl;
         this.destinationPath = destinationPath;
         this.startByte = startByte;
         this.endByte = endByte;
         this.workerId = workerId;
         this.latch = latch;
+        this.totalDownloaded = totalDownloaded;
     }
 
     @Override
@@ -76,17 +80,22 @@ public class DownloadWorker implements Runnable {
                                 toWrite = (int) (expected - totalRead);
                             }
                             raf.write(buffer, 0, toWrite);
+                            totalDownloaded.addAndGet(bytesRead);
                             totalRead += toWrite;
                             if (totalRead >= expected) break;
                         }
                         success = true;
-//                        System.out.println("Worker " + workerId + ": Downloaded success.");
                     }
 
                 } catch (FileNotFoundException e) {
                     System.err.println("Worker " + workerId + ": File path error. Aborting.");
                     return;
                 } catch (IOException e) {
+                    if (e instanceof UnknownHostException) {
+                        System.err.println("Worker " + workerId + ": Invalid Domain/Host. Aborting.");
+                        return;
+                    }
+
                     System.err.println("Worker " + workerId + ": Error (Attempt " + attempt + "/" + AppConstants.MAX_RETRIES + "): " + e.getMessage());
 
                     if (attempt < AppConstants.MAX_RETRIES) {
