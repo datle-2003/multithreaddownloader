@@ -3,6 +3,7 @@ import org.gradle.jvm.tasks.Jar
 plugins {
     id("java")
     id("application")
+    id("org.graalvm.buildtools.native") version "0.9.28"
 }
 
 group = "org.example"
@@ -32,5 +33,16 @@ application {
 tasks.named<Jar>("jar") {
     manifest {
         attributes(mapOf("Main-Class" to "org.example.Main"))
+    }
+}
+
+graalvmNative {
+    binaries {
+        named("main") {
+            imageName.set("downloader")
+            buildArgs.add("--no-fallback")
+            buildArgs.add("--enable-url-protocols=http,https")
+            buildArgs.add("--enable-all-security-services")
+        }
     }
 }

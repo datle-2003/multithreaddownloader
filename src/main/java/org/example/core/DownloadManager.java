@@ -160,7 +160,6 @@ public class DownloadManager {
                         break;
                     }
                 }
-                System.out.print("\nSaving final state... ");
                 stateManager.save(finalStateForSave);
             });
             saveThread.start();
@@ -170,7 +169,6 @@ public class DownloadManager {
             final Thread finalSaveThread = saveThread;
 
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                System.out.println("\nShutdown signal received. Stopping download...");
 
                 if (finalExecutor != null) finalExecutor.shutdownNow();
                 if (finalUIThread != null) finalUIThread.interrupt();
@@ -205,14 +203,21 @@ public class DownloadManager {
 
             latch.await();
 
-            if (saveThread != null) saveThread.interrupt();
+            if (saveThread != null) {
+                saveThread.interrupt();
+                try {
+                    saveThread.join(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
             if (progressThread != null) progressThread.interrupt();
 
             if (totalDownloaded.get() >= remoteContentLength) {
                 stateManager.delete();
-                System.out.println("\n🎉 Download completed: " + config.getOutputFilePath());
+                System.out.println("\nDownload completed: " + config.getOutputFilePath());
             } else {
-                System.out.println("\n⚠️ Download stopped incomplete. Resume file saved.");
+                System.out.println("\nDownload stopped incomplete. Resume file saved.");
             }
 
         } catch (Exception e) {

@@ -1,0 +1,17 @@
+{
+  "types":[
+    {
+      "name":"java.lang.String"
+    },
+    {
+      "name":"long[]"
+    },
+    {
+      "name":"org.example.state.DownloadState"
+    }
+  ],
+  "lambdaCapturingTypes":[
+  ],
+  "proxies":[
+  ]
+}
