@@ -3,9 +3,11 @@ name: Java CI/CD with GraalVM
 on:
   push:
     branches: ["main"]
+    tags:
+      - 'v*'
   pull_request:
     branches: ["main"]
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   test:
@@ -13,21 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin' 
-          
+          distribution: 'temurin'
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-        
       - name: Run Tests
         run: ./gradlew test
 
   build-native:
-    name: Build Native on ${{ matrix.os }}
-    needs: test 
+    name: Build on ${{ matrix.os }}
+    needs: test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -35,7 +34,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '21'
@@ -49,18 +47,42 @@ jobs:
       - name: Build Native Image
         run: ./gradlew nativeCompile
 
-      - name: Rename Binary (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          mv build/native/nativeCompile/downloader build/native/nativeCompile/downloader-${{ runner.os }}
+      - name: Rename Linux
+        if: runner.os == 'Linux'
+        run: mv build/native/nativeCompile/downloader build/native/nativeCompile/downloader-linux
 
-      - name: Rename Binary (Windows)
+      - name: Rename macOS
+        if: runner.os == 'macOS'
+        run: mv build/native/nativeCompile/downloader build/native/nativeCompile/downloader-macos
+
+      - name: Rename Windows
         if: runner.os == 'Windows'
-        run: |
-          mv build/native/nativeCompile/downloader.exe build/native/nativeCompile/downloader-windows.exe
+        run: mv build/native/nativeCompile/downloader.exe build/native/nativeCompile/downloader-windows.exe
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: downloader-${{ matrix.os }}
+          name: binary-${{ matrix.os }}
           path: build/native/nativeCompile/downloader-*
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build-native
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          merge-multiple: true 
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            downloader-linux
+            downloader-windows.exe
+            downloader-macos
+          generate_release_notes: true
