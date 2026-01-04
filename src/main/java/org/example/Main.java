@@ -1,17 +1,31 @@
 package org.example;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import org.example.config.DownloadConfiguration;
+import org.example.core.DownloadManager;
+import org.example.utils.ArgumentParser;
+
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
+        try {
+            DownloadConfiguration config = ArgumentParser.parseArguments(args);
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
+            System.out.println("Target: " + config.getUrl());
+            System.out.println("Output: " + config.getOutputFilePath());
+            System.out.println("Threads: " + config.getThreadCount());
+
+            DownloadManager manager = new DownloadManager(config);
+
+            manager.download();
+
+        } catch (ArgumentParser.HelpRequestException e) {
+            ArgumentParser.printHelp();
+        } catch (IllegalArgumentException e) {
+            System.err.println("❌ Error: " + e.getMessage());
+            System.out.println();
+            ArgumentParser.printHelp();
+            System.exit(1);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

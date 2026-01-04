@@ -5,6 +5,7 @@ public class AppConstants {
 
     public static final int DEFAULT_THREAD_COUNT = 4;
     public static final String DEFAULT_OUTPUT_FOLDER = "./";
+    public static final int MAX_RETRIES = 3;
 
 
     public static final int CONNECT_TIMEOUT = 10000;

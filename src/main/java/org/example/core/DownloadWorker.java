@@ -1,5 +1,6 @@
 package org.example.core;
 
+import org.example.constants.AppConstants;
 import org.example.utils.HttpUtils;
 
 import java.io.BufferedInputStream;
@@ -7,10 +8,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
-import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
-public class DownloadWorker implements Runnable{
+public class DownloadWorker implements Runnable {
 
     private final String fileUrl;
     private final String destinationPath;
@@ -18,7 +18,6 @@ public class DownloadWorker implements Runnable{
     private final long endByte;
     private final int workerId;
     private final CountDownLatch latch;
-
 
     public DownloadWorker(String fileUrl, String destinationPath, long startByte, long endByte, int workerId, CountDownLatch latch) {
         this.fileUrl = fileUrl;
@@ -29,60 +28,83 @@ public class DownloadWorker implements Runnable{
         this.latch = latch;
     }
 
-
     @Override
     public void run() {
-        HttpURLConnection connection = null;
+        int attempt = 0;
+        boolean success = false;
 
-        try {
-            connection = HttpUtils.getConnection(fileUrl);
-            String range = "bytes=" + startByte + "-" + endByte;
-            connection.setRequestProperty("Range", range);
+        try { // Try lớn này để đảm bảo finally latch.countDown() chỉ chạy 1 lần
+            while (attempt < AppConstants.MAX_RETRIES && !success) {
+                attempt++;
+                HttpURLConnection connection = null;
 
-            int responseCode = connection.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_PARTIAL && responseCode != HttpURLConnection.HTTP_OK) {
-                System.err.println("Worker " + workerId + ": Server does not support partial content. Response code: " + responseCode);
-                return;
-            }
+                try {
+                    connection = HttpUtils.getConnection(fileUrl);
 
-            if (startByte > 0 && responseCode == HttpURLConnection.HTTP_OK) {
-                System.err.println("Worker " + workerId + " Panic! Asked for byte " + startByte + " but got full file (200). Stopping.");
-                return;
-            }
+                    // Setup Timeout cho mỗi lần thử lại
+                    connection.setConnectTimeout(AppConstants.CONNECT_TIMEOUT);
+                    connection.setReadTimeout(AppConstants.READ_TIMEOUT);
 
-            try (BufferedInputStream inputStream = new BufferedInputStream(connection.getInputStream());
-                 RandomAccessFile raf = new RandomAccessFile(destinationPath, "rw")) {
+                    String range = "bytes=" + startByte + "-" + endByte;
+                    connection.setRequestProperty("Range", range);
 
-                raf.seek(startByte); // move the file pointer to start byte
+                    int responseCode = connection.getResponseCode();
 
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                long totalRead = 0L;
-                long expected = endByte - startByte + 1;
-
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    int toWrite = bytesRead;
-                    if (totalRead + bytesRead > expected) {
-                        toWrite = (int) (expected - totalRead);
+                    if (responseCode != HttpURLConnection.HTTP_PARTIAL && responseCode != HttpURLConnection.HTTP_OK) {
+                        System.err.println("Worker " + workerId + ": Server error " + responseCode + ". Aborting.");
+                        return;
                     }
-                    raf.write(buffer, 0, toWrite);
-                    totalRead += toWrite;
-                    if (totalRead >= expected) break;
+
+                    if (startByte > 0 && responseCode == HttpURLConnection.HTTP_OK) {
+                        System.err.println("Worker " + workerId + ": Server sent full file instead of partial. Aborting.");
+                        return;
+                    }
+
+                    try (BufferedInputStream inputStream = new BufferedInputStream(connection.getInputStream());
+                         RandomAccessFile raf = new RandomAccessFile(destinationPath, "rw")) {
+
+                        raf.seek(startByte);
+
+                        byte[] buffer = new byte[AppConstants.BUFFER_SIZE];
+                        int bytesRead;
+                        long totalRead = 0L;
+                        long expected = endByte - startByte + 1;
+
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            int toWrite = bytesRead;
+                            if (totalRead + bytesRead > expected) {
+                                toWrite = (int) (expected - totalRead);
+                            }
+                            raf.write(buffer, 0, toWrite);
+                            totalRead += toWrite;
+                            if (totalRead >= expected) break;
+                        }
+                        success = true;
+//                        System.out.println("Worker " + workerId + ": Downloaded success.");
+                    }
+
+                } catch (FileNotFoundException e) {
+                    System.err.println("Worker " + workerId + ": File path error. Aborting.");
+                    return;
+                } catch (IOException e) {
+                    System.err.println("Worker " + workerId + ": Error (Attempt " + attempt + "/" + AppConstants.MAX_RETRIES + "): " + e.getMessage());
+
+                    if (attempt < AppConstants.MAX_RETRIES) {
+                        try {
+                            Thread.sleep(2000);
+                        } catch (InterruptedException ignored) {}
+                    }
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
                 }
-
-                System.out.println("Worker " + workerId + ": Downloaded " + totalRead + " bytes from " + startByte + " to " + endByte);
-
-            } catch (FileNotFoundException e) {
-                System.err.println("Worker " + workerId + ": Destination file not found.");
-                return;
             }
-        } catch (IOException e) {
-            System.err.println("Worker " + workerId + ": Failed to establish connection or IO error: " + e.getMessage());
-            return;
+
+            if (!success) {
+                System.err.println("Worker " + workerId + ": FAILED after " + AppConstants.MAX_RETRIES + " attempts.");
+            }
         } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
             latch.countDown();
         }
     }

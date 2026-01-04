@@ -1,5 +1,8 @@
+import org.gradle.jvm.tasks.Jar
+
 plugins {
     id("java")
+    id("application")
 }
 
 group = "org.example"
@@ -20,4 +23,14 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+application {
+    mainClass.set("org.example.Main")
+}
+
+tasks.named<Jar>("jar") {
+    manifest {
+        attributes(mapOf("Main-Class" to "org.example.Main"))
+    }
 }
