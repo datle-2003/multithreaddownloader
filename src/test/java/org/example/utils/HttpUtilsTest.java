@@ -40,4 +40,12 @@ class HttpUtilsTest {
         int responseCode = connection.getResponseCode();
         Assertions.assertEquals(404, responseCode, "For nonexistent file, response code must be 404 Not Found");
     }
+
+    @Test
+    @DisplayName("Check if server supports range requests")
+    void testIsSupportRange() throws IOException {
+        boolean isSupport = HttpUtils.isSupportRange(TEST_URL);
+
+        Assertions.assertTrue(isSupport, "The server should support range requests");
+    }
 }

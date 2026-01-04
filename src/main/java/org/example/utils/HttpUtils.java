@@ -36,4 +36,16 @@ public class HttpUtils {
 
         return length;
     }
+
+    public static boolean isSupportRange(String fileUrl) throws IOException {
+        HttpURLConnection connection = getConnection(fileUrl);
+
+        // try to request a single byte
+        connection.setRequestProperty("Range", "bytes=0-0");
+
+        int responseCode = connection.getResponseCode();
+        connection.disconnect();
+
+        return responseCode == HttpURLConnection.HTTP_PARTIAL; // 206
+    }
 }
