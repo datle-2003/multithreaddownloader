@@ -1,5 +1,6 @@
 # Java Multi-thread Downloader
 
+
 A lightweight command-line download manager written in Java. Supports multi-threaded downloading for higher speeds and includes a robust resume capability.
 
 ## Build
@@ -59,19 +60,19 @@ Using the native binary:
 1) Download a file with default settings (single thread):
 
 ```bash
-java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.iso
+java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso
 ```
 
 2) Download with 16 threads:
 
 ```bash
-java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.iso -n 16
+java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso -n 16
 ```
 
 3) Using the native binary:
 
 ```bash
-./build/native/nativeCompile/downloader https://releases.ubuntu.com/24.04/ubuntu-24.04.iso -n 16
+./build/native/nativeCompile/downloader https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso -n 16
 ```
 
 ---
