@@ -1,50 +1,100 @@
 # Java Multi-thread Downloader
 
-A lightweight, command-line download manager written in Java. It supports multi-threaded downloading for higher speeds and includes a robust resume capability.
+A lightweight command-line download manager written in Java. Supports multi-threaded downloading for higher speeds and includes a robust resume capability.
 
-## 🛠 Build
+## Build
+
+You can build this project in two ways: as a standard JAR or as a standalone native executable (GraalVM).
+
+### 1. Standard JAR
 
 Build the project using Gradle:
 
 ```bash
 ./gradlew clean build
 ```
-The executable JAR will be located in build/libs/.
 
-Usage
-Basic Syntax
-Bash
+The executable JAR will be located in `build/libs/`.
 
+### 2. Native Executable (GraalVM)
+
+Build a standalone binary that runs without a separate Java installation (Linux only). Prerequisite: GraalVM JDK 21+ must be installed and configured.
+
+```bash
+./gradlew nativeCompile
+```
+
+The standalone binary will be located in `build/native/nativeCompile/downloader`.
+
+---
+
+## Usage
+
+Basic syntax:
+
+Using the JAR:
+
+```bash
 java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar <URL> [OPTIONS]
+```
 
-Options
-Flag	Description	Default
-<URL>	Direct link to the file you want to download.	(Required)
--n <number>	Number of threads (connections) to use.	1
-💡 Examples
+Using the native binary:
 
-1. Download a file with default settings (Single thread):
-   Bash
+```bash
+./build/native/nativeCompile/downloader <URL> [OPTIONS]
+```
 
-java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar [https://releases.ubuntu.com/24.04/ubuntu-24.04.iso](https://releases.ubuntu.com/24.04/ubuntu-24.04.iso)
+### Options
 
-2. Download with 16 threads (Recommended for speed):
-   Bash
+| Flag          | Description                                     | Default           |
+|---------------|-------------------------------------------------|-------------------|
+| `<URL>`       | Direct link to the file to download.            | **(Required)** |
+| `-n <number>` | Number of threads (connections) to use.         | `4`               |
+| `-o <path>`   | Specify custom output file name or path.        | Filename from URL |
+| `-h`          | Show help message.                          | —                 |
+---
 
-java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar [https://releases.ubuntu.com/24.04/ubuntu-24.04.iso](https://releases.ubuntu.com/24.04/ubuntu-24.04.iso) -n 16
+## Examples
 
-🔄 Resume Capability & State Management
+1) Download a file with default settings (single thread):
 
-This tool automatically handles network interruptions and manual stops.
+```bash
+java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.iso
+```
 
-    To Pause/Stop: Press Ctrl + C. The program will gracefully stop workers, save the current progress to a .meta file, and exit.
+2) Download with 16 threads:
 
-    To Resume: Simply run the exact same command again.
+```bash
+java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.iso -n 16
+```
 
-        The tool detects the existing .meta file.
+3) Using the native binary:
 
-        It automatically verifies the file size and server support.
+```bash
+./build/native/nativeCompile/downloader https://releases.ubuntu.com/24.04/ubuntu-24.04.iso -n 16
+```
 
-        It resumes downloading exactly where it left off.
+---
 
-    Note: If the download completes successfully, the .meta file is automatically deleted.
+## Resume capability & state management
+
+This tool automatically handles interruptions and manual stops:
+
+- To pause/stop: press `Ctrl+C`. The program attempts to stop workers cleanly, save progress to a `.meta` file, and exit.
+- To resume: run the same command again. The tool:
+  - Detects an existing `.meta` file for the same destination URL.
+  - Verifies file size and server support for range requests.
+  - Resumes downloading from the saved progress.
+- If a download completes successfully, the `.meta` file is removed.
+
+Notes:
+
+- Use the same destination and URL to ensure correct resume behavior.
+- Temporary `.meta.tmp` files may remain after failures; the program attempts atomic replace (write to temp, then rename).
+
+---
+
+## Troubleshooting
+
+- If you see build errors when running `nativeCompile`, ensure your `JAVA_HOME` points to a GraalVM JDK 21+ installation and that the GraalVM native-image tool is installed.
+---
