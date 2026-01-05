@@ -57,19 +57,13 @@ Using the native binary:
 
 ## Examples
 
-1) Download a file with default settings (single thread):
+1) Download with 8 threads:
 
 ```bash
-java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso
+java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso -n 8
 ```
 
-2) Download with 16 threads:
-
-```bash
-java -jar build/libs/MultithreadDownloader-1.0-SNAPSHOT.jar https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso -n 16
-```
-
-3) Using the native binary:
+2) Using the native binary:
 
 ```bash
 ./build/native/nativeCompile/downloader https://releases.ubuntu.com/24.04/ubuntu-24.04.3-desktop-amd64.iso -n 16
@@ -91,11 +85,19 @@ This tool automatically handles interruptions and manual stops:
 Notes:
 
 - Use the same destination and URL to ensure correct resume behavior.
-- Temporary `.meta.tmp` files may remain after failures; the program attempts atomic replace (write to temp, then rename).
-
 ---
 
-## Troubleshooting
+## Docker
+You can build and run the downloader using Docker.
 
-- If you see build errors when running `nativeCompile`, ensure your `JAVA_HOME` points to a GraalVM JDK 21+ installation and that the GraalVM native-image tool is installed.
----
+Build the Docker image:
+
+```bash
+docker build -t multithread-downloader .
+```
+
+Run the downloader in a container:
+
+```bash
+docker run --it --rm --init -v $(pwd):/downloads multithread-downloader <URL> [OPTIONS]
+```
